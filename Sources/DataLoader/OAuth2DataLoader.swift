@@ -167,7 +167,15 @@ open class OAuth2DataLoader: OAuth2Requestable {
 		}
 	}
 	
-	
+	open func attemptToAuthorizeEmbeded(from: AnyObject, callback: @escaping ((OAuth2JSON?, OAuth2Error?) -> Void)) {
+		if !isAuthorizing {
+			isAuthorizing = true
+			oauth2.authorizeEmbedded(from: from) { authParams, error in
+				self.isAuthorizing = false
+				callback(authParams, error)
+			}
+		}
+	}
 	// MARK: - Queue
 	
 	/**
