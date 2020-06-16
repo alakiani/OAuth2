@@ -43,6 +43,9 @@ open class OAuth2Authorizer: OAuth2AuthorizerUI {
 	/// Used to store the authentication session.
 	private var authenticationSession: AnyObject?
 	
+	/// Used to store the ASWebAuthenticationPresentationContextProvider
+ 	private var webAuthenticationPresentationContextProvider: AnyObject?
+	
 	public init(oauth2: OAuth2Base) {
 		self.oauth2 = oauth2
 	}
@@ -153,6 +156,10 @@ open class OAuth2Authorizer: OAuth2AuthorizerUI {
 #else
 		if #available(iOS 12, *) {
 			authenticationSession = ASWebAuthenticationSession(url: url, callbackURLScheme: redirect, completionHandler: completionHandler)
+			if #available(iOS 13.0, *) {
+				webAuthenticationPresentationContextProvider = OAuth2ASWebAuthenticationPresentationContextProvider(authorizer: self)
+				(authenticationSession as! ASWebAuthenticationSession).presentationContextProvider = webAuthenticationPresentationContextProvider as! OAuth2ASWebAuthenticationPresentationContextProvider
+			}
 			return (authenticationSession as! ASWebAuthenticationSession).start()
 		} else {
 			authenticationSession = SFAuthenticationSession(url: url, callbackURLScheme: redirect, completionHandler: completionHandler)
@@ -291,6 +298,24 @@ class OAuth2SFViewControllerDelegate: NSObject, SFSafariViewControllerDelegate {
 	func safariViewControllerDidFinish(_ controller: SFSafariViewController) {
 		authorizer.safariViewControllerDidCancel(controller)
 	}
+}
+
+@available(iOS 13.0, *)
+class OAuth2ASWebAuthenticationPresentationContextProvider: NSObject, ASWebAuthenticationPresentationContextProviding {
+
+ private let authorizer: OAuth2Authorizer
+
+ init(authorizer: OAuth2Authorizer) {
+	 self.authorizer = authorizer
+ }
+
+ public func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+	 guard let context = authorizer.oauth2.authConfig.authorizeContext as? ASPresentationAnchor else {
+		 fatalError("Invalid authorizeContext -- must be ASPresentationAnchor (AKA, UIWindow)")
+	 }
+
+	 return context
+ }
 }
 
 #endif
